@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AirbeamBridgeProject",
+  "type": "object",
+  "required": ["project_id","project_name","geometry","airbeam","plates","materials","analysis"],
+  "properties": {
+    "project_id": { "type": "string" },
+    "project_name": { "type": "string", "maxLength": 120 },
+    "notes": { "type": "string" },
+    "preset": { "type": "string", "enum": ["LightVehicle","HeavyVehicle","MilitaryRapidDeploy","Demo8m_3.5t"] },
+
+    "geometry": {
+      "type": "object",
+      "required": ["span","clear_width","units"],
+      "properties": {
+        "span": { "type": "number", "minimum": 500, "maximum": 50000 },
+        "clear_width": { "type": "number", "minimum": 600, "maximum": 5000 },
+        "deck_camber": { "type": "number", "default": 0 },
+        "taper_length_each_end": { "type": "number", "minimum": 0, "maximum": 2000, "default": 500 },
+        "units": { "type": "string", "enum": ["mm","m"], "default": "mm" }
+      }
+    },
+
+    "airbeam": {
+      "type": "object",
+      "required": ["type","height","membrane_thickness","membrane_material_id","pressure"],
+      "properties": {
+        "type": { "type": "string", "enum": ["cylindrical","toroidal","multi-chamber"] },
+        "height": { "type": "number", "minimum": 50, "maximum": 1500 },
+        "membrane_thickness": { "type": "number", "minimum": 0.25, "maximum": 10 },
+        "membrane_material_id": { "type": "string" },
+        "pressure": { "type": "number", "minimum": 5, "maximum": 200 },
+        "animate_inflation": { "type": "boolean", "default": true }
+      }
+    },
+
+    "plates": {
+      "type": "object",
+      "properties": {
+        "top_thickness": { "type": "number", "minimum": 1, "maximum": 100 },
+        "bottom_thickness": { "type": "number", "minimum": 1, "maximum": 100 },
+        "material_id": { "type": "string" },
+        "mesh_size": { "type": "number", "minimum": 5, "maximum": 500 }
+      }
+    },
+
+    "straps": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "type": { "type": "string", "enum": ["strap_flat","wire_rope","tendon"], "default": "strap_flat" },
+        "spacing": { "type": "number", "minimum": 50, "maximum": 2000 },
+        "area": { "type": "number", "minimum": 1 },
+        "E": { "type": "number", "minimum": 0.001 },
+        "pretension": { "type": "number", "minimum": 0 },
+        "anchor": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["through-bolt","adhesive","clamp"], "default": "clamp" },
+            "stiffness_k": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+
+    "supports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required":["position","type"],
+        "properties": {
+          "position": { "type": "number" },
+          "type": { "type": "string", "enum": ["pinned","roller","fixed","custom"] },
+          "k_vertical": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+
+    "loads": {
+      "type": "object",
+      "properties": {
+        "uniform_load_kN_per_m": { "type": "number", "minimum": 0 },
+        "point_loads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": { "type": "number" },
+              "magnitude_kN": { "type": "number" },
+              "direction": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3
+              }
+            },
+            "required": ["position","magnitude_kN"]
+          }
+        },
+        "vehicle": {
+          "type": "object",
+          "properties": {
+            "axles": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": { "offset": { "type": "number" }, "load_kN": { "type": "number" } },
+                "required": ["offset","load_kN"]
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id","name","density","E"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "density": { "type": "number" },
+          "E": { "type": "number" },
+          "nu": { "type": "number" },
+          "color": { "type": "string", "pattern": "^#([A-Fa-f0-9]{6})$" }
+        }
+      }
+    },
+
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["approx","quick_linear","nonlinear_full"], "default": "approx" },
+        "mesh_target": { "type": "number", "default": 50 },
+        "outputs": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["displacement","stress_contour","strap_forces","modal_shapes"] }
+        },
+        "num_cores": { "type": "integer", "minimum": 1, "maximum": 64, "default": 4 }
+      }
+    },
+
+    "export": {
+      "type": "object",
+      "properties": {
+        "formats": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["INP","VTK","PDF","JSON"] },
+          "default": ["INP","JSON"]
+        },
+        "report_title": { "type": "string" },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 6, "default": 3 }
+      }
+    }
+  }
+}
