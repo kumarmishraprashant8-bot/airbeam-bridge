@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import ProjectForm from "./ProjectForm";
 import * as THREE from "three";
+import { generatePdfReport } from "./utils/generatePdfReport";
 
 // ResultsModal component defined inline to avoid import issues
 interface ResultsModalProps {
@@ -18,7 +19,7 @@ class SimpleOrbitControls {
   domElement: HTMLElement;
   enabled = true;
   target = new THREE.Vector3(0, 0, 0);
-  
+
   private spherical = { radius: 20, theta: 0, phi: Math.PI / 3 };
   private isDragging = false;
   private lastMouseX = 0;
@@ -53,26 +54,26 @@ class SimpleOrbitControls {
   onMouseMove = (e: MouseEvent) => {
     this.mouse.x = (e.clientX / this.domElement.clientWidth) * 2 - 1;
     this.mouse.y = -(e.clientY / this.domElement.clientHeight) * 2 + 1;
-    
+
     if (this.isDragging && this.enabled) {
       const deltaX = e.clientX - this.lastMouseX;
       const deltaY = e.clientY - this.lastMouseY;
-      
+
       this.velocity.theta = -deltaX * 0.01;
       this.velocity.phi = -deltaY * 0.01;
-      
+
       this.spherical.theta += this.velocity.theta;
       this.spherical.phi += this.velocity.phi;
       this.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.spherical.phi));
-      
+
       this.lastMouseX = e.clientX;
       this.lastMouseY = e.clientY;
       this.update();
     }
   };
 
-  onMouseUp = () => { 
-    this.isDragging = false; 
+  onMouseUp = () => {
+    this.isDragging = false;
   };
 
   onWheel = (e: WheelEvent) => {
@@ -91,7 +92,7 @@ class SimpleOrbitControls {
       this.spherical.phi += this.velocity.phi;
       this.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.spherical.phi));
     }
-    
+
     const { radius, theta, phi } = this.spherical;
     this.camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
     this.camera.position.y = radius * Math.cos(phi);
@@ -147,7 +148,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
     );
     camera.position.set(15, 8, 15);
 
-    const renderer = new THREE.WebGLRenderer({ 
+    const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance"
     });
@@ -160,7 +161,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
     const controls = new SimpleOrbitControls(camera, renderer.domElement);
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    
+
     // Info tooltip element with better styling
     const tooltip = document.createElement('div');
     tooltip.style.cssText = `
@@ -256,7 +257,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
       const z = positions[i + 2];
       const normalizedX = (x / sx + 0.5);
       const deflection = Math.sin(normalizedX * Math.PI) * (maxDeflection * scale * 10);
-      
+
       if (viewMode === "deformation") {
         positions[i + 1] = deflection;
         // More distinguishable color gradient: blue (low) to red (high)
@@ -299,7 +300,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
 
     // Support markers with user data for info
     const supportGeom = new THREE.SphereGeometry(0.3, 32, 32); // Higher resolution
-    const supportMat = new THREE.MeshPhongMaterial({ 
+    const supportMat = new THREE.MeshPhongMaterial({
       color: 0xef4444,
       emissive: 0xef4444,
       emissiveIntensity: 0.3,
@@ -314,26 +315,26 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
     scene.add(support2);
 
     // Add user data to meshes for hover info
-    topPlateMesh.userData = { 
-      type: 'top_plate', 
+    topPlateMesh.userData = {
+      type: 'top_plate',
       name: 'Top Plate (Deck)',
       thickness: `${topPlate}mm`,
       material: 'Steel'
     };
-    bottomPlateMesh.userData = { 
-      type: 'bottom_plate', 
+    bottomPlateMesh.userData = {
+      type: 'bottom_plate',
       name: 'Bottom Plate',
       thickness: `${bottomPlate}mm`,
       material: 'Steel'
     };
-    cylinder.userData = { 
-      type: 'airbeam', 
+    cylinder.userData = {
+      type: 'airbeam',
       name: 'Inflatable Airbeam',
       height: `${airbeamHeight}mm`,
       material: 'PVC-coated Polyester'
     };
-    deckMesh.userData = { 
-      type: 'deck', 
+    deckMesh.userData = {
+      type: 'deck',
       name: 'Bridge Deck',
       span: `${span}mm`,
       width: `${width}mm`,
@@ -349,12 +350,12 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
       // Convert 3D position to normalized position along span (0 to 1)
       const normalizedX = Math.max(0, Math.min(1, (positionX / sx + 0.5)));
       const positionAlongSpan = normalizedX * span;
-      
+
       // Find the closest data points
       const index = Math.floor((normalizedX) * (dataArray.length - 1));
       const nextIndex = Math.min(index + 1, dataArray.length - 1);
       const t = (normalizedX * (dataArray.length - 1)) - index;
-      
+
       if (dataArray[index] && dataArray[nextIndex]) {
         if (dataArray[index].deflection_mm !== undefined) {
           const val1 = Math.abs(dataArray[index].deflection_mm || 0);
@@ -380,42 +381,42 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
     // Mouse move handler for hover info with real-time values
     const onMouseMove = (e: MouseEvent) => {
       if (!viewerRef.current) return;
-      
+
       mouse.x = (e.clientX / viewerRef.current.clientWidth) * 2 - 1;
       mouse.y = -(e.clientY / viewerRef.current.clientHeight) * 2 + 1;
-      
+
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(interactiveObjects, true);
-      
+
       if (intersects.length > 0) {
         const intersection = intersects[0];
         const object = intersection.object;
         const point = intersection.point;
-        
+
         // Calculate position along span
         const positionX = point.x;
         const normalizedX = (positionX / sx + 0.5);
         const positionAlongSpan = normalizedX * span;
-        
+
         // Get real-time values at this position
         const deflection = getValueAtPosition(positionX, deflectionData, span);
         const stress = getValueAtPosition(positionX, stressData, span);
         const shear = getValueAtPosition(positionX, shearData, span);
         const moment = getValueAtPosition(positionX, momentData, span);
-        
+
         if (hoveredObject !== object) {
           hoveredObject = object;
-          
+
           // Highlight object
           if (object instanceof THREE.Mesh) {
             (object.material as THREE.MeshPhongMaterial).emissive.setHex(0x444444);
           }
         }
-        
+
         // Show tooltip with real-time values
         const userData = object.userData;
         let tooltipText = '';
-        
+
         if (object === deckMesh) {
           // Show analysis values for deck with better formatting
           tooltipText = `
@@ -451,7 +452,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
           if (userData.material) tooltipText += `Material: ${userData.material}<br>`;
           if (userData.position) tooltipText += `Position: ${userData.position}`;
         }
-        
+
         tooltip.innerHTML = tooltipText;
         tooltip.style.display = 'block';
         tooltip.style.left = `${e.clientX + 15}px`;
@@ -628,7 +629,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
           {activeTab === "overview" && (
             <div className="chart-section">
               <h3>📈 Comprehensive Analysis Summary</h3>
-              
+
               {/* Key Metrics Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 <div className="result-card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#fff' }}>
@@ -656,7 +657,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                   <div className="result-unit" style={{ color: 'rgba(255,255,255,0.8)' }}>elements</div>
                 </div>
               </div>
-              
+
               {/* Analysis Details */}
               <div style={{ padding: "20px", lineHeight: 1.8, background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', marginBottom: '20px' }}>
                 <h4 style={{ color: '#3b82f6', marginBottom: '12px' }}>Analysis Configuration</h4>
@@ -669,14 +670,14 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                   <p><strong>Mesh Nodes:</strong> {results?.mesh_nodes || 1456} nodes</p>
                 </div>
               </div>
-              
+
               {/* Design Status */}
               <div style={{ marginTop: 20, padding: 20, background: 'rgba(16, 185, 129, 0.1)', borderRadius: 8, border: '2px solid rgba(16, 185, 129, 0.3)' }}>
                 <h4 style={{ color: '#10b981', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>✓</span> Design Status: PASSED
                 </h4>
                 <p style={{ marginBottom: '12px' }}>
-                  <strong>Overall Assessment:</strong> Structure passes all design checks. Maximum deflection is within L/300 limit. 
+                  <strong>Overall Assessment:</strong> Structure passes all design checks. Maximum deflection is within L/300 limit.
                   All stress, shear, and flexure checks are satisfied per IS 456:2000 code requirements.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginTop: '16px' }}>
@@ -732,11 +733,11 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   {[0, 50, 100, 150, 200].map((y) => (
                     <line key={y} x1="50" y1={250 - y} x2="750" y2={250 - y} stroke="#333" strokeWidth="1" opacity="0.3" />
                   ))}
-                  
+
                   <path
                     d={deflectionData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -749,7 +750,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     strokeWidth="3"
                     fill="none"
                   />
-                  
+
                   <path
                     d={`${deflectionData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -761,14 +762,14 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     fill="url(#gradient1)"
                     opacity="0.3"
                   />
-                  
-                  <line x1="50" y1={250 - ((results?.deflection_limit_mm || (project?.geometry?.span_mm || 8000) / 300) / (results?.max_deflection_mm || 50)) * 230} 
-                        x2="750" y2={250 - ((results?.deflection_limit_mm || (project?.geometry?.span_mm || 8000) / 300) / (results?.max_deflection_mm || 50)) * 230} 
-                        stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
-                  
+
+                  <line x1="50" y1={250 - ((results?.deflection_limit_mm || (project?.geometry?.span_mm || 8000) / 300) / (results?.max_deflection_mm || 50)) * 230}
+                    x2="750" y2={250 - ((results?.deflection_limit_mm || (project?.geometry?.span_mm || 8000) / 300) / (results?.max_deflection_mm || 50)) * 230}
+                    stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
+
                   <text x="400" y="280" textAnchor="middle" fill="#999" fontSize="14">Position along span (mm)</text>
                   <text x="20" y="135" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 135)">Deflection (mm)</text>
-                  
+
                   <defs>
                     <linearGradient id="gradient1" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
@@ -799,11 +800,11 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   {[0, 50, 100, 150, 200].map((y) => (
                     <line key={y} x1="50" y1={250 - y} x2="750" y2={250 - y} stroke="#333" strokeWidth="1" opacity="0.3" />
                   ))}
-                  
+
                   <path
                     d={stressData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -815,11 +816,11 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     strokeWidth="3"
                     fill="none"
                   />
-                  
-                  <line x1="50" y1={250 - ((results?.allowable_stress_MPa || 250) / 200) * 230} 
-                        x2="750" y2={250 - ((results?.allowable_stress_MPa || 250) / 200) * 230} 
-                        stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
-                  
+
+                  <line x1="50" y1={250 - ((results?.allowable_stress_MPa || 250) / 200) * 230}
+                    x2="750" y2={250 - ((results?.allowable_stress_MPa || 250) / 200) * 230}
+                    stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
+
                   <text x="400" y="280" textAnchor="middle" fill="#999" fontSize="14">Position along span (mm)</text>
                   <text x="20" y="135" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 135)">Stress (MPa)</text>
                 </svg>
@@ -852,13 +853,13 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                   <div className="result-unit">ratio</div>
                 </div>
               </div>
-              
+
               <h4 style={{ marginTop: '24px', marginBottom: '12px', color: '#f59e0b' }}>Shear Force Diagram</h4>
               <div className="chart-container">
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   <path
                     d={shearData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -870,7 +871,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     strokeWidth="3"
                     fill="none"
                   />
-                  
+
                   <path
                     d={`${shearData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -881,12 +882,12 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     fill="url(#gradientShear)"
                     opacity="0.3"
                   />
-                  
+
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
-                  
+
                   <text x="400" y="280" textAnchor="middle" fill="#999" fontSize="14">Position along span (mm)</text>
                   <text x="20" y="135" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 135)">Shear Force (kN)</text>
-                  
+
                   <defs>
                     <linearGradient id="gradientShear" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.8" />
@@ -895,13 +896,13 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                   </defs>
                 </svg>
               </div>
-              
+
               <h4 style={{ marginTop: '24px', marginBottom: '12px', color: '#ef4444' }}>Shear Stress Distribution</h4>
               <div className="chart-container">
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   <path
                     d={shearData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -913,7 +914,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     strokeWidth="3"
                     fill="none"
                   />
-                  
+
                   <path
                     d={`${shearData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -924,14 +925,14 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     fill="url(#gradientShearStress)"
                     opacity="0.3"
                   />
-                  
-                  <line x1="50" y1={250 - ((results?.allowable_shear_MPa || 20.0) / 20) * 230} 
-                        x2="750" y2={250 - ((results?.allowable_shear_MPa || 20.0) / 20) * 230} 
-                        stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
-                  
+
+                  <line x1="50" y1={250 - ((results?.allowable_shear_MPa || 20.0) / 20) * 230}
+                    x2="750" y2={250 - ((results?.allowable_shear_MPa || 20.0) / 20) * 230}
+                    stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
+
                   <text x="400" y="280" textAnchor="middle" fill="#999" fontSize="14">Position along span (mm)</text>
                   <text x="20" y="135" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 135)">Shear Stress (MPa)</text>
-                  
+
                   <defs>
                     <linearGradient id="gradientShearStress" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="#ef4444" stopOpacity="0.8" />
@@ -972,7 +973,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   <path
                     d={momentData.map((d: any, i: number) => {
                       const x = 50 + ((d.position_mm || d.position || i * 400) / (project?.geometry?.span_mm || 8000)) * 700;
@@ -984,7 +985,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     strokeWidth="3"
                     fill="none"
                   />
-                  
+
                   <text x="400" y="280" textAnchor="middle" fill="#999" fontSize="14">Position along span (mm)</text>
                   <text x="20" y="135" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 135)">Moment (kN·m)</text>
                 </svg>
@@ -1031,19 +1032,19 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   {/* Support A */}
                   <circle cx="50" cy="250" r="8" fill="#ef4444" />
                   <text x="50" y="270" textAnchor="middle" fill="#999" fontSize="12">Support A</text>
                   <line x1="50" y1="250" x2="50" y2="200" stroke="#ef4444" strokeWidth="3" />
                   <text x="30" y="220" textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold">{(results?.reaction_A_kN || 6.0).toFixed(1)} kN</text>
-                  
+
                   {/* Support B */}
                   <circle cx="750" cy="250" r="8" fill="#ef4444" />
                   <text x="750" y="270" textAnchor="middle" fill="#999" fontSize="12">Support B</text>
                   <line x1="750" y1="250" x2="750" y2="200" stroke="#ef4444" strokeWidth="3" />
                   <text x="770" y="220" textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold">{(results?.reaction_B_kN || 6.0).toFixed(1)} kN</text>
-                  
+
                   {/* Distributed load representation */}
                   <path d="M 50 150 L 750 150" stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" />
                   {Array.from({ length: 10 }, (_, i) => {
@@ -1051,7 +1052,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     return <line key={i} x1={x} y1="150" x2={x} y2="140" stroke="#3b82f6" strokeWidth="2" />;
                   })}
                   <text x="400" y="135" textAnchor="middle" fill="#3b82f6" fontSize="12">Distributed Load: {(results?.live_load_uniform_kN_m2 || 1.5).toFixed(1)} kN/m²</text>
-                  
+
                   <text x="400" y="280" textAnchor="middle" fill="#999" fontSize="14">Bridge Span</text>
                 </svg>
               </div>
@@ -1087,7 +1088,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   {['Top Plate', 'Bottom Plate', 'Airbeam', 'Membrane'].map((material, idx) => {
                     const util = [
                       results?.material_utilization?.top_plate || 0.73,
@@ -1098,7 +1099,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     const x = 100 + idx * 150;
                     const barHeight = util * 200;
                     const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ec4899'];
-                    
+
                     return (
                       <g key={material}>
                         <rect x={x - 30} y={250 - barHeight} width="60" height={barHeight} fill={colors[idx]} opacity="0.8" />
@@ -1109,10 +1110,10 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                       </g>
                     );
                   })}
-                  
+
                   <line x1="50" y1="50" x2="750" y2="50" stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
                   <text x="770" y="55" textAnchor="start" fill="#10b981" fontSize="12">100% Limit</text>
-                  
+
                   <text x="400" y="290" textAnchor="middle" fill="#999" fontSize="14">Material Components</text>
                   <text x="20" y="135" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 135)">Utilization (%)</text>
                 </svg>
@@ -1159,28 +1160,28 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                 <svg width="100%" height="100%" viewBox="0 0 800 300">
                   <line x1="50" y1="250" x2="750" y2="250" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="250" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   {/* Dead load */}
                   <rect x="50" y="200" width="700" height="50" fill="#6b7280" opacity="0.6" />
                   <text x="400" y="230" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">
                     Dead Load: {(results?.dead_load_kN || 4.5).toFixed(1)} kN
                   </text>
-                  
+
                   {/* Live load */}
                   <rect x="50" y="150" width="700" height="50" fill="#3b82f6" opacity="0.6" />
                   <text x="400" y="180" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">
                     Live Load: {(results?.live_load_kN || 7.5).toFixed(1)} kN
                   </text>
-                  
+
                   {/* Load factor visualization */}
                   <line x1="50" y1="100" x2="750" y2="100" stroke="#f59e0b" strokeWidth="3" strokeDasharray="10,5" />
                   <text x="400" y="90" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
                     Factored Load (×{results?.load_factor || 1.5}): {(results?.total_load_kN || 12.0) * (results?.load_factor || 1.5)} kN
                   </text>
-                  
+
                   <text x="400" y="280" textAnchor="middle" fill="#999" fontSize="14">Bridge Span</text>
                   <text x="20" y="135" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 135)">Load (kN)</text>
-                  
+
                   {/* Legend */}
                   <rect x="600" y="30" width="15" height="15" fill="#6b7280" />
                   <text x="620" y="42" fill="#999" fontSize="12">Dead Load</text>
@@ -1226,7 +1227,7 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                     Design checks data not available
                   </div>
                 )}
-                
+
                 {/* Additional safety factors */}
                 <div style={{ marginTop: '24px', padding: '20px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
                   <h4 style={{ marginBottom: '16px', color: '#3b82f6' }}>Safety Factors Summary</h4>
@@ -1290,12 +1291,12 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                   </button>
                 </div>
               </div>
-              
+
               {/* Bridge Information Panel */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
-                gap: '12px', 
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: '12px',
                 marginBottom: '16px',
                 padding: '12px',
                 background: 'rgba(59, 130, 246, 0.05)',
@@ -1326,18 +1327,18 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                   </div>
                 </div>
               </div>
-              
-              <div className="viewer-3d-results" ref={viewerRef} style={{ 
-                height: 'calc(100vh - 400px)', 
+
+              <div className="viewer-3d-results" ref={viewerRef} style={{
+                height: 'calc(100vh - 400px)',
                 minHeight: '600px',
-                width: '100%', 
-                background: '#0a0e27', 
+                width: '100%',
+                background: '#0a0e27',
                 borderRadius: '8px',
                 border: '2px solid rgba(59, 130, 246, 0.3)',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
                 position: 'relative'
               }} />
-              
+
               <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div style={{ padding: '12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', fontSize: '0.9rem' }}>
                   <strong style={{ color: '#3b82f6' }}>🎮 Controls:</strong>
@@ -1359,12 +1360,12 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                   </ul>
                 </div>
               </div>
-              
+
               {/* Color Scale Legend */}
-              <div style={{ 
-                marginTop: '16px', 
-                padding: '16px', 
-                background: 'rgba(0,0,0,0.2)', 
+              <div style={{
+                marginTop: '16px',
+                padding: '16px',
+                background: 'rgba(0,0,0,0.2)',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -1374,9 +1375,9 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
                 <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
                   {viewMode === "deformation" ? "📉 Deformation Scale:" : "⚡ Stress Scale:"}
                 </div>
-                <div style={{ 
-                  flex: 1, 
-                  height: '30px', 
+                <div style={{
+                  flex: 1,
+                  height: '30px',
                   background: 'linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899, #ef4444)',
                   borderRadius: '4px',
                   minWidth: '200px'
@@ -1390,14 +1391,17 @@ function ResultsModal({ isOpen, onClose, results, project }: ResultsModalProps) 
           )}
 
           <div className="download-section">
-            <button className="download-button" onClick={() => alert('Downloading INP file...')}>
+            <button className="download-button" onClick={() => alert('Use the "Generate INP" button in the sidebar to download your INP file.')}>
               📄 Download INP File
             </button>
-            <button className="download-button" onClick={() => alert('Downloading full report...')}>
+            <button className="download-button" onClick={async () => {
+              try {
+                await generatePdfReport(project, results || {});
+              } catch (e: any) {
+                alert('PDF generation error: ' + e.message);
+              }
+            }}>
               📊 Download Full Report
-            </button>
-            <button className="download-button" onClick={() => alert('Exporting to PDF...')}>
-              📑 Export to PDF
             </button>
           </div>
         </div>
@@ -1425,37 +1429,37 @@ const MOCK_BACKEND = true;
 async function postJSON(url: string, data: any) {
   if (MOCK_BACKEND) {
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     if (url.includes('/api/projects')) {
       const span = data.geometry?.span_mm || 8000;
       const width = data.geometry?.bridge_clear_width_mm || 1500;
-      
+
       // Generate comprehensive analysis results
       const deflectionProfile = Array.from({ length: 50 }, (_, i) => ({
         position_mm: (i / 49) * span,
         deflection_mm: Math.sin((i / 49) * Math.PI) * 45.2,
         rotation_rad: Math.cos((i / 49) * Math.PI) * 0.001
       }));
-      
+
       const stressProfile = Array.from({ length: 50 }, (_, i) => ({
         position_mm: (i / 49) * span,
         vonMises_MPa: 50 + Math.abs(Math.sin((i / 49) * Math.PI * 2)) * 132.5,
         principal_max_MPa: 60 + Math.abs(Math.sin((i / 49) * Math.PI * 2)) * 122.5,
         principal_min_MPa: -20 - Math.abs(Math.sin((i / 49) * Math.PI * 2)) * 30
       }));
-      
+
       const shearProfile = Array.from({ length: 50 }, (_, i) => ({
         position_mm: (i / 49) * span,
         shear_force_kN: Math.cos((i / 49) * Math.PI) * 25.5,
         shear_stress_MPa: Math.abs(Math.cos((i / 49) * Math.PI)) * 15.2
       }));
-      
+
       const momentProfile = Array.from({ length: 50 }, (_, i) => ({
         position_mm: (i / 49) * span,
         moment_kNm: Math.sin((i / 49) * Math.PI) * 85.3,
         curvature_1_per_m: Math.sin((i / 49) * Math.PI) * 0.00015
       }));
-      
+
       return {
         job_id: `job_${Date.now()}`,
         project_id: data.project_id,
@@ -1468,7 +1472,7 @@ async function postJSON(url: string, data: any) {
           computation_time: 2.3,
           iterations: 12,
           convergence_status: "converged",
-          
+
           // Deflection results
           max_deflection_mm: 45.2,
           max_deflection_location_mm: span / 2,
@@ -1476,7 +1480,7 @@ async function postJSON(url: string, data: any) {
           deflection_limit_mm: span / 300,
           deflection_check: "PASS",
           deflection_ratio: 0.85,
-          
+
           // Stress results
           max_stress_MPa: 182.5,
           max_stress_location_mm: span / 2,
@@ -1487,7 +1491,7 @@ async function postJSON(url: string, data: any) {
           vonMises_max_MPa: 182.5,
           principal_stress_max_MPa: 192.5,
           principal_stress_min_MPa: -50.0,
-          
+
           // Shear results
           max_shear_force_kN: 25.5,
           max_shear_location_mm: 0,
@@ -1496,7 +1500,7 @@ async function postJSON(url: string, data: any) {
           allowable_shear_MPa: 20.0,
           shear_check: "PASS",
           shear_utilization: 0.76,
-          
+
           // Flexure/Moment results
           max_moment_kNm: 85.3,
           max_moment_location_mm: span / 2,
@@ -1505,7 +1509,7 @@ async function postJSON(url: string, data: any) {
           flexure_check: "PASS",
           flexure_utilization: 0.71,
           max_curvature_1_per_m: 0.00015,
-          
+
           // Design checks
           design_checks: {
             deflection: { status: "PASS", value: 45.2, limit: span / 300, code: "IS 456:2000" },
@@ -1515,20 +1519,20 @@ async function postJSON(url: string, data: any) {
             buckling: { status: "PASS", factor: 3.2, limit: 2.0, code: "IS 456:2000" },
             fatigue: { status: "PASS", cycles: 1000000, limit: 500000, code: "IS 456:2000" }
           },
-          
+
           // Safety factors
           safety_factor: 2.8,
           safety_factor_deflection: 1.85,
           safety_factor_stress: 1.37,
           safety_factor_shear: 1.32,
           safety_factor_flexure: 1.41,
-          
+
           // Load information
           total_load_kN: 12.0,
           dead_load_kN: 4.5,
           live_load_kN: 7.5,
           load_factor: 1.5,
-          
+
           // Material utilization
           material_utilization: {
             top_plate: 0.73,
@@ -1536,17 +1540,17 @@ async function postJSON(url: string, data: any) {
             airbeam: 0.45,
             membrane: 0.32
           },
-          
+
           // Reaction forces
           reaction_A_kN: 6.0,
           reaction_B_kN: 6.0,
           total_reaction_kN: 12.0,
           max_horizontal_force_kN: 0.5,
           support_moment_kNm: 0.0,
-          
+
           // Load information (enhanced)
           live_load_uniform_kN_m2: data.loads?.live_load_uniform_kN_m2 || 1.5,
-          
+
           // Deformation data for 3D visualization
           deformation_data: deflectionProfile.map(d => ({
             x: d.position_mm,
@@ -1564,19 +1568,19 @@ async function postJSON(url: string, data: any) {
       };
     }
   }
-  
+
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`HTTP ${res.status}: ${errorText || 'Unknown error'}`);
     }
-    
+
     return await res.json();
   } catch (error: any) {
     if (error.message.includes('Failed to fetch')) {
@@ -1633,7 +1637,7 @@ function App() {
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = `[${timestamp}] ${msg}`;
     setLogs((s) => [logEntry, ...s].slice(0, 50));
-    
+
     if (isError) {
       setError(msg);
       setTimeout(() => setError(null), 5000);
@@ -1643,32 +1647,32 @@ function App() {
   async function handleSubmitJob() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const payload = ensureProjectId(project);
       pushLog(`📤 Submitting job to backend...`);
-      
+
       const res = await postJSON("http://localhost:8000/api/projects", payload);
-      
+
       const jobId = res.job_id || res.project_id || "unknown";
-      
+
       pushLog(`✅ Job submitted successfully! Job ID: ${jobId}`);
       pushLog(`Status: ${res?.status || "queued"}`);
-      
+
       if (res.result) {
         pushLog(`📊 Analysis Results:`);
         if (res.result.mesh_elements) pushLog(`  • Mesh elements: ${res.result.mesh_elements}`);
         if (res.result.max_deflection_mm) pushLog(`  • Max deflection: ${res.result.max_deflection_mm} mm`);
         if (res.result.analysis_type) pushLog(`  • Analysis type: ${res.result.analysis_type}`);
       }
-      
+
       if (res.message) {
         pushLog(`💬 ${res.message}`);
       }
 
       setAnalysisResults(res.result || res);
       setTimeout(() => setShowResults(true), 500);
-      
+
     } catch (err: any) {
       const errorMsg = err.message || "Unknown error occurred";
       pushLog(`❌ Error: ${errorMsg}`, true);
@@ -1681,19 +1685,19 @@ function App() {
   async function handleGenerateINP() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const payload = ensureProjectId(project);
       pushLog(`📝 Generating INP file...`);
-      
+
       const res = await postJSON("http://localhost:8000/api/generate-inp", payload);
-      
+
       pushLog(`✅ INP file generated: ${res.filename || "output.inp"}`);
-      
+
       if (res.message) {
         pushLog(`💬 ${res.message}`);
       }
-      
+
       if (res.download_url) {
         pushLog(`🔗 Opening download link...`);
         window.open(res.download_url, "_blank");
@@ -1701,7 +1705,7 @@ function App() {
         pushLog(`📄 INP content preview:`);
         const preview = res.content.substring(0, 200);
         pushLog(`${preview}...`);
-        
+
         if (MOCK_BACKEND) {
           const blob = new Blob([res.content], { type: 'text/plain' });
           const url = URL.createObjectURL(blob);
@@ -1720,7 +1724,7 @@ function App() {
         status: "completed",
       });
       setTimeout(() => setShowResults(true), 500);
-      
+
     } catch (err: any) {
       const errorMsg = err.message || "Unknown error occurred";
       pushLog(`❌ Error: ${errorMsg}`, true);
@@ -1800,12 +1804,12 @@ function App() {
           )}
         </div>
 
-        <div className="viewer-container" style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-          borderRadius: '12px', 
+        <div className="viewer-container" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderRadius: '12px',
           padding: '30px 20px',
           minHeight: '400px'
         }}>
@@ -1814,10 +1818,10 @@ function App() {
             <p style={{ fontSize: '1rem', opacity: 0.95, marginBottom: '20px', lineHeight: '1.5' }}>
               Submit a job to view comprehensive analysis results and interactive 3D visualization
             </p>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(2, 1fr)', 
-              gap: '8px', 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '8px',
               marginTop: '16px',
               fontSize: '0.85rem'
             }}>

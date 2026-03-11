@@ -14,7 +14,7 @@ class SimpleOrbitControls {
   domElement: HTMLElement;
   enabled = true;
   target = new THREE.Vector3(0, 0, 0);
-  
+
   private spherical = { radius: 20, theta: 0, phi: Math.PI / 3 };
   private isDragging = false;
   private lastMouseX = 0;
@@ -293,12 +293,12 @@ export default function ResultsModal({ isOpen, onClose, results, project }: Resu
                   {/* Axes */}
                   <line x1="50" y1="200" x2="750" y2="200" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="200" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   {/* Grid */}
                   {[0, 50, 100, 150, 200].map((y) => (
                     <line key={y} x1="50" y1={200 - y} x2="750" y2={200 - y} stroke="#333" strokeWidth="1" opacity="0.3" />
                   ))}
-                  
+
                   {/* Deflection curve */}
                   <path
                     d={deflectionData.map((d, i) => {
@@ -310,7 +310,7 @@ export default function ResultsModal({ isOpen, onClose, results, project }: Resu
                     strokeWidth="3"
                     fill="none"
                   />
-                  
+
                   {/* Fill under curve */}
                   <path
                     d={`${deflectionData.map((d, i) => {
@@ -321,11 +321,11 @@ export default function ResultsModal({ isOpen, onClose, results, project }: Resu
                     fill="url(#gradient1)"
                     opacity="0.3"
                   />
-                  
+
                   {/* Labels */}
                   <text x="400" y="230" textAnchor="middle" fill="#999" fontSize="14">Position along span (m)</text>
                   <text x="20" y="110" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 110)">Deflection (mm)</text>
-                  
+
                   <defs>
                     <linearGradient id="gradient1" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
@@ -345,12 +345,12 @@ export default function ResultsModal({ isOpen, onClose, results, project }: Resu
                   {/* Axes */}
                   <line x1="50" y1="200" x2="750" y2="200" stroke="#666" strokeWidth="2" />
                   <line x1="50" y1="200" x2="50" y2="20" stroke="#666" strokeWidth="2" />
-                  
+
                   {/* Grid */}
                   {[0, 50, 100, 150, 200].map((y) => (
                     <line key={y} x1="50" y1={200 - y} x2="750" y2={200 - y} stroke="#333" strokeWidth="1" opacity="0.3" />
                   ))}
-                  
+
                   {/* Stress bars */}
                   {stressData.map((d, i) => {
                     const x = 50 + (d.position / 100) * 700;
@@ -369,7 +369,7 @@ export default function ResultsModal({ isOpen, onClose, results, project }: Resu
                       />
                     );
                   })}
-                  
+
                   {/* Labels */}
                   <text x="400" y="230" textAnchor="middle" fill="#999" fontSize="14">Position along span (m)</text>
                   <text x="20" y="110" textAnchor="middle" fill="#999" fontSize="14" transform="rotate(-90 20 110)">Stress (MPa)</text>
@@ -390,14 +390,18 @@ export default function ResultsModal({ isOpen, onClose, results, project }: Resu
 
           {/* Download Buttons */}
           <div className="download-section">
-            <button className="download-button" onClick={() => alert('Downloading INP file...')}>
+            <button className="download-button" onClick={() => alert('Use the "Generate INP" button in the sidebar to download your INP file.')}>
               📄 Download INP File
             </button>
-            <button className="download-button" onClick={() => alert('Downloading full report...')}>
+            <button className="download-button" onClick={async () => {
+              try {
+                const { generatePdfReport } = await import('../../utils/generatePdfReport');
+                await generatePdfReport(project, results || {});
+              } catch (e: any) {
+                alert('PDF generation error: ' + e.message);
+              }
+            }}>
               📊 Download Full Report
-            </button>
-            <button className="download-button" onClick={() => alert('Exporting to PDF...')}>
-              📑 Export to PDF
             </button>
           </div>
         </div>
